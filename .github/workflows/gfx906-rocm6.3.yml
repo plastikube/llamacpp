@@ -1,0 +1,23 @@
+name: llamacpp - ROCM 6.3 - Nightly
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # 00:00 on Sunday
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: "llamacpp-nightly-gfx906-rocm6.3"
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/image.yml
+    with:
+      gpu-driver: gfx906-rocm6.3
+      build-type: hash
