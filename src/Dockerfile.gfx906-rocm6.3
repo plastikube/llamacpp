@@ -40,6 +40,7 @@ RUN HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
         -DGGML_HIP=ON \
         -DGGML_HIP_ROCWMMA_FATTN=ON \
         -DBUILD_SHARED_LIBS=OFF \
+        -DGGML_BACKEND_DL=OFF \
         -DAMDGPU_TARGETS="$ROCM_DOCKER_ARCH" \
         -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON \
         -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF \
