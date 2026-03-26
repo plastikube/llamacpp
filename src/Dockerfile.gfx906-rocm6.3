@@ -11,12 +11,13 @@ ARG BASE_ROCM_DEV_CONTAINER=rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}-co
 FROM ${BASE_ROCM_DEV_CONTAINER} AS build
 
 # Unless otherwise specified, we make a fat build.
-# List from https://github.com/ggml-org/llama.cpp/pull/1087#issuecomment-1682807878
 # This is mostly tied to rocBLAS supported archs.
-# gfx803, gfx900, gfx906, gfx1032, gfx1101, gfx1102,not officialy supported
-# check https://rocm.docs.amd.com/projects/install-on-linux/en/docs-6.4.1/reference/system-requirements.html
+# check https://rocm.docs.amd.com/projects/install-on-linux/en/docs-7.2.0/reference/system-requirements.html
+# check https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityrad/native_linux/native_linux_compatibility.html
+# check https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityryz/native_linux/native_linux_compatibility.html
 
-# ARG ROCM_DOCKER_ARCH='gfx803;gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1010;gfx1030;gfx1032;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx1151'
+# ARG ROCM_DOCKER_ARCH='gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1151;gfx1150;gfx1200;gfx1201'
+
 ARG ROCM_DOCKER_ARCH='gfx906'
 
 # Set ROCm architectures
@@ -27,26 +28,25 @@ RUN apt-get update \
     build-essential \
     cmake \
     git \
-    libcurl4-openssl-dev \
+    libssl-dev \
     curl \
     libgomp1
 
 WORKDIR /app
 
-COPY ./llamacpp .
+COPY . .
 
 RUN HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
     cmake -S . -B build \
         -DGGML_HIP=ON \
         -DGGML_HIP_ROCWMMA_FATTN=ON \
-        -DBUILD_SHARED_LIBS=ON \
-        -DGGML_BACKEND_DL=OFF \
         -DAMDGPU_TARGETS="$ROCM_DOCKER_ARCH" \
+        -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON \
         -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF \
     && cmake --build build --config Release -j$(nproc)
 
 RUN mkdir -p /app/lib \
-    && find build -name "*.so" -exec cp {} /app/lib \;
+    && find build -name "*.so*" -exec cp -P {} /app/lib \;
 
 RUN mkdir -p /app/full \
     && cp build/bin/* /app/full \
@@ -67,12 +67,12 @@ RUN apt-get update \
     && find /var/cache/apt/archives /var/lib/apt/lists -not -name lock -type f -delete \
     && find /var/cache -type f -delete
 
-COPY --from=build /app/lib/ /app
+COPY --from=build /app/lib/ /app/
 
 ### Full
 FROM base AS full
 
-COPY --from=build /app/full /app
+COPY --from=build /app/full /app/
 
 WORKDIR /app
 
@@ -95,7 +95,7 @@ ENTRYPOINT ["/app/tools.sh"]
 ### Light, CLI only
 FROM base AS light
 
-COPY --from=build /app/full/llama-cli /app
+COPY --from=build /app/full/llama-cli /app/full/llama-completion /app/
 
 WORKDIR /app
 
@@ -106,7 +106,7 @@ FROM base AS server
 
 ENV LLAMA_ARG_HOST=0.0.0.0
 
-COPY --from=build /app/full/llama-server /app
+COPY --from=build /app/full/llama-server /app/
 
 WORKDIR /app
 
