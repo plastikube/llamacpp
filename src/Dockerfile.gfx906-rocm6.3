@@ -34,7 +34,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY ./llamacpp .
+COPY ./llamacpp/* ./llamacpp/.* ./
 
 RUN HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
     cmake -S . -B build \
@@ -46,7 +46,7 @@ RUN HIPCXX="$(hipconfig -l)/clang" HIP_PATH="$(hipconfig -R)" \
     && cmake --build build --config Release -j$(nproc)
 
 RUN mkdir -p /app/lib \
-    && find build -name "*.so*" -exec cp -P {} /app/lib \;
+    && find build -name "*.so*" -exec cp -vP {} /app/lib \;
 
 RUN mkdir -p /app/full \
     && cp build/bin/* /app/full \
@@ -67,7 +67,7 @@ RUN apt-get update \
     && find /var/cache/apt/archives /var/lib/apt/lists -not -name lock -type f -delete \
     && find /var/cache -type f -delete
 
-COPY --from=build /app/lib/ /app/
+COPY --from=build /app/lib/* /app/
 
 ### Full
 FROM base AS full
